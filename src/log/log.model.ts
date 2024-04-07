@@ -1,14 +1,14 @@
-import * as tool from '../lib/tool';
-import { VConsoleModel } from '../lib/model';
-import { contentStore } from '../core/core.model';
-import { getLogDatasWithFormatting } from './logTool';
-import { VConsoleLogStore as Store } from './log.store';
+import * as tool from "../lib/tool";
+import { VConsoleModel } from "../lib/model";
+import { contentStore } from "../core/core.model";
+import { getLogDatasWithFormatting } from "./logTool";
+import { VConsoleLogStore as Store } from "./log.store";
 
 /**********************************
  * Interfaces
  **********************************/
 
-export type IConsoleLogMethod = 'log' | 'info' | 'debug' | 'warn' | 'error';
+export type IConsoleLogMethod = "log" | "info" | "debug" | "warn" | "error";
 
 export interface IVConsoleLogData {
   origData: any; // The original logging data
@@ -18,7 +18,7 @@ export interface IVConsoleLogData {
 export interface IVConsoleLog {
   _id: string;
   type: IConsoleLogMethod;
-  cmdType?: 'input' | 'output';
+  cmdType?: "input" | "output";
   repeated: number;
   toggle: Record<string, boolean>;
   date: number;
@@ -35,21 +35,27 @@ export type IVConsoleLogFilter = { [pluginId: string]: string };
 
 export interface IVConsoleAddLogOptions {
   noOrig?: boolean;
-  cmdType?: 'input' | 'output';
+  cmdType?: "input" | "output";
 }
-
 
 /**********************************
  * Model
  **********************************/
 
 export class VConsoleLogModel extends VConsoleModel {
-  public readonly LOG_METHODS: IConsoleLogMethod[] = ['log', 'info', 'warn', 'debug', 'error'];
+  public readonly LOG_METHODS: IConsoleLogMethod[] = [
+    "log",
+    "info",
+    "warn",
+    "debug",
+    "error",
+  ];
   public ADDED_LOG_PLUGIN_ID: string[] = [];
   public maxLogNumber: number = 1000;
   protected logCounter: number = 0; // a counter used to do some tasks on a regular basis
   protected groupLevel: number = 0; // for `console.group()`
-  protected groupLabelCollapsedStack: { label: symbol, collapsed: boolean }[] = [];
+  protected groupLabelCollapsedStack: { label: symbol; collapsed: boolean }[] =
+    [];
   protected pluginPattern: RegExp;
   protected logQueue: IVConsoleLog[] = [];
   protected flushLogScheduled: boolean = false;
@@ -58,7 +64,6 @@ export class VConsoleLogModel extends VConsoleModel {
    * The original `window.console` methods.
    */
   public origConsole: { [method: string]: Function } = {};
-
 
   /**
    * Bind a Log plugin.
@@ -75,7 +80,10 @@ export class VConsoleLogModel extends VConsoleModel {
     Store.create(pluginId);
 
     this.ADDED_LOG_PLUGIN_ID.push(pluginId);
-    this.pluginPattern = new RegExp(`^\\[(${this.ADDED_LOG_PLUGIN_ID.join('|')})\\]$`, 'i');
+    this.pluginPattern = new RegExp(
+      `^\\[(${this.ADDED_LOG_PLUGIN_ID.join("|")})\\]$`,
+      "i"
+    );
     // this.callOriginalConsole('info', 'bindPlugin:', this.pluginPattern);
     return true;
   }
@@ -86,7 +94,9 @@ export class VConsoleLogModel extends VConsoleModel {
    */
   public unbindPlugin(pluginId: string) {
     const idx = this.ADDED_LOG_PLUGIN_ID.indexOf(pluginId);
-    if (idx === -1) { return false; }
+    if (idx === -1) {
+      return false;
+    }
 
     this.ADDED_LOG_PLUGIN_ID.splice(idx, 1);
     // logStore.update((store) => {
@@ -107,10 +117,10 @@ export class VConsoleLogModel extends VConsoleModel {
    * Methods will be hooked only once.
    */
   public mockConsole() {
-    if (typeof this.origConsole.log === 'function') {
+    if (typeof this.origConsole.log === "function") {
       return;
     }
-    
+
     // save original console object
     if (!window.console) {
       (<any>window.console) = {};
@@ -149,11 +159,11 @@ export class VConsoleLogModel extends VConsoleModel {
   protected _mockConsoleTime() {
     const timeLog: { [label: string]: number } = {};
 
-    window.console.time = ((label: string = '') => {
+    window.console.time = ((label: string = "") => {
       timeLog[label] = Date.now();
     }).bind(window.console);
 
-    window.console.timeEnd = ((label: string = '') => {
+    window.console.timeEnd = ((label: string = "") => {
       const pre = timeLog[label];
       let t = 0;
       if (pre) {
@@ -161,7 +171,7 @@ export class VConsoleLogModel extends VConsoleModel {
         delete timeLog[label];
       }
       this.addLog({
-        type: 'log',
+        type: "log",
         origData: [`${label}: ${t}ms`],
       });
     }).bind(window.console);
@@ -169,18 +179,24 @@ export class VConsoleLogModel extends VConsoleModel {
 
   protected _mockConsoleGroup() {
     const groupFunction = (isCollapsed: boolean) => {
-      return ((label = 'console.group') => {
+      return ((label = "console.group") => {
         const labelSymbol = Symbol(label);
-        this.groupLabelCollapsedStack.push({ label: labelSymbol, collapsed: isCollapsed });
-
-        this.addLog({
-          type: 'log',
-          origData: [label],
-          isGroupHeader: isCollapsed ? 2 : 1,
-          isGroupCollapsed: false,
-        }, {
-          noOrig: true,
+        this.groupLabelCollapsedStack.push({
+          label: labelSymbol,
+          collapsed: isCollapsed,
         });
+
+        this.addLog(
+          {
+            type: "log",
+            origData: [label],
+            isGroupHeader: isCollapsed ? 2 : 1,
+            isGroupCollapsed: false,
+          },
+          {
+            noOrig: true,
+          }
+        );
 
         this.groupLevel++;
         if (isCollapsed) {
@@ -204,7 +220,7 @@ export class VConsoleLogModel extends VConsoleModel {
     window.console.clear = ((...args) => {
       this.resetGroup();
       this.clearLog();
-      this.callOriginalConsole('clear', ...args);
+      this.callOriginalConsole("clear", ...args);
     }).bind(window.console);
   }
 
@@ -226,7 +242,7 @@ export class VConsoleLogModel extends VConsoleModel {
    * Call origin `window.console[method](...args)`
    */
   public callOriginalConsole(method: string, ...args) {
-    if (typeof this.origConsole[method] === 'function') {
+    if (typeof this.origConsole[method] === "function") {
       this.origConsole[method].apply(window.console, args);
     }
   }
@@ -272,20 +288,34 @@ export class VConsoleLogModel extends VConsoleModel {
   }
 
   /**
+   * Get a plugin's logs.
+   */
+  public getPluginLog(pluginId: string) {
+    return Store.get(pluginId);
+  }
+
+  /**
    * Add a vConsole log.
    */
   public addLog(
     item: {
-      type: IConsoleLogMethod,
-      origData: any[],
-      isGroupHeader?: 0 | 1 | 2,
-      isGroupCollapsed?: boolean,
-    } = { type: 'log', origData: [], isGroupHeader: 0, isGroupCollapsed: false, }, 
+      type: IConsoleLogMethod;
+      origData: any[];
+      isGroupHeader?: 0 | 1 | 2;
+      isGroupCollapsed?: boolean;
+    } = {
+      type: "log",
+      origData: [],
+      isGroupHeader: 0,
+      isGroupCollapsed: false,
+    },
     opt?: IVConsoleAddLogOptions
   ) {
     // get group
-    const previousGroup = this.groupLabelCollapsedStack[this.groupLabelCollapsedStack.length - 2];
-    const currentGroup = this.groupLabelCollapsedStack[this.groupLabelCollapsedStack.length - 1];
+    const previousGroup =
+      this.groupLabelCollapsedStack[this.groupLabelCollapsedStack.length - 2];
+    const currentGroup =
+      this.groupLabelCollapsedStack[this.groupLabelCollapsedStack.length - 1];
     // prepare data
     const log: IVConsoleLog = {
       _id: tool.getUniqueID(),
@@ -298,7 +328,9 @@ export class VConsoleLogModel extends VConsoleModel {
       groupLabel: currentGroup?.label,
       groupLevel: this.groupLevel,
       groupHeader: item.isGroupHeader,
-      groupCollapsed: item.isGroupHeader ? !!previousGroup?.collapsed : !!currentGroup?.collapsed,
+      groupCollapsed: item.isGroupHeader
+        ? !!previousGroup?.collapsed
+        : !!currentGroup?.collapsed,
     };
 
     this._signalLog(log);
@@ -313,28 +345,32 @@ export class VConsoleLogModel extends VConsoleModel {
    * Execute a JS command.
    */
   public evalCommand(cmd: string) {
-    this.addLog({
-      type: 'log',
-      origData: [cmd],
-    }, { cmdType: 'input' });
+    this.addLog(
+      {
+        type: "log",
+        origData: [cmd],
+      },
+      { cmdType: "input" }
+    );
 
     let result = void 0;
 
     try {
-      result = eval.call(window, '(' + cmd + ')');
+      result = eval.call(window, "(" + cmd + ")");
     } catch (e) {
       try {
         result = eval.call(window, cmd);
-      } catch (e) {
-        ;
-      }
+      } catch (e) {}
     }
 
-    this.addLog({
-      type: 'log',
-      origData: [result],
-    }, { cmdType: 'output' });
-  };
+    this.addLog(
+      {
+        type: "log",
+        origData: [result],
+      },
+      { cmdType: "output" }
+    );
+  }
 
   protected _signalLog(log: IVConsoleLog) {
     // throttle addLog
@@ -379,7 +415,7 @@ export class VConsoleLogModel extends VConsoleModel {
         logList = this._limitLogListLength(logList);
 
         return { logList };
-      })
+      });
     }
     contentStore.updateTime();
   }
@@ -388,7 +424,7 @@ export class VConsoleLogModel extends VConsoleModel {
     // if origData[0] is `[xxx]` format, and `xxx` is a Log plugin id,
     // then put this log to that plugin,
     // otherwise put it to default plugin.
-    let pluginId = 'default';
+    let pluginId = "default";
     const firstData = log.data[0]?.origData;
     if (tool.isString(firstData)) {
       const match = (firstData as string).match(this.pluginPattern);
@@ -411,7 +447,11 @@ export class VConsoleLogModel extends VConsoleModel {
     }
 
     let isRepeated = false;
-    if (log.type === lastLog.type && log.cmdType === lastLog.cmdType && log.data.length === lastLog.data.length) {
+    if (
+      log.type === lastLog.type &&
+      log.cmdType === lastLog.cmdType &&
+      log.data.length === lastLog.data.length
+    ) {
       isRepeated = true;
       for (let i = 0; i < log.data.length; i++) {
         if (log.data[i].origData !== lastLog.data[i].origData) {
