@@ -96,7 +96,7 @@ export class VConsoleDefaultPlugin extends VConsoleLogPlugin {
       let args = [errorName, error];
       if (error instanceof Error) {
         args = [
-          errorName, 
+          errorName,
           {
             name: error.name,
             message: error.message,
@@ -104,10 +104,10 @@ export class VConsoleDefaultPlugin extends VConsoleLogPlugin {
           },
         ];
       }
-      this.model.addLog({
-        type: 'error',
-        origData: args,
-      }, { noOrig: true });
+      // this.model.addLog({
+      //   type: 'error',
+      //   origData: args,
+      // }, { noOrig: true });
     };
     window.removeEventListener('unhandledrejection', this.rejectionHandler);
     window.addEventListener('unhandledrejection', this.rejectionHandler);
