@@ -1,17 +1,17 @@
-import { writable, get } from 'svelte/store';
-import { VConsoleModel } from '../lib/model';
-import { contentStore } from '../core/core.model';
-import { VConsoleNetworkRequestItem } from './requestItem';
-import { XHRProxy } from './xhr.proxy';
-import { FetchProxy } from './fetch.proxy';
-import { BeaconProxy } from './beacon.proxy';
-
+import { writable, get } from "svelte/store";
+import { VConsoleModel } from "../lib/model";
+import { contentStore } from "../core/core.model";
+import { VConsoleNetworkRequestItem } from "./requestItem";
+import { XHRProxy } from "./xhr.proxy";
+import { FetchProxy } from "./fetch.proxy";
+import { BeaconProxy } from "./beacon.proxy";
 
 /**
  * Network Store
  */
-export const requestList = writable<{ [id: string]: VConsoleNetworkRequestItem }>({});
-
+export const requestList = writable<{
+  [id: string]: VConsoleNetworkRequestItem;
+}>({});
 
 /**
  * Network Model
@@ -23,17 +23,21 @@ export class VConsoleNetworkModel extends VConsoleModel {
 
   constructor() {
     super();
-    this.mockXHR();
-    this.mockFetch();
-    this.mockSendBeacon();
+    try {
+      this.mockXHR();
+      this.mockFetch();
+      this.mockSendBeacon();
+    } catch (error) {
+      //
+    }
   }
 
   public unMock() {
     // recover original functions
-    if (window.hasOwnProperty('XMLHttpRequest')) {
+    if (window.hasOwnProperty("XMLHttpRequest")) {
       window.XMLHttpRequest = XHRProxy.origXMLHttpRequest;
     }
-    if (window.hasOwnProperty('fetch')) {
+    if (window.hasOwnProperty("fetch")) {
       window.fetch = FetchProxy.origFetch;
     }
     if (BeaconProxy.hasSendBeacon()) {
@@ -79,20 +83,22 @@ export class VConsoleNetworkModel extends VConsoleModel {
    * @private
    */
   private mockXHR() {
-    if (!window.hasOwnProperty('XMLHttpRequest')) {
+    if (!window.hasOwnProperty("XMLHttpRequest")) {
       return;
     }
-    window.XMLHttpRequest = XHRProxy.create((item: VConsoleNetworkRequestItem) => {
-      this.updateRequest(item.id, item);
-    });
-  };
+    window.XMLHttpRequest = XHRProxy.create(
+      (item: VConsoleNetworkRequestItem) => {
+        this.updateRequest(item.id, item);
+      }
+    );
+  }
 
   /**
    * mock fetch request
    * @private
    */
   private mockFetch() {
-    if (!window.hasOwnProperty('fetch')) {
+    if (!window.hasOwnProperty("fetch")) {
       return;
     }
     window.fetch = FetchProxy.create((item: VConsoleNetworkRequestItem) => {
@@ -108,9 +114,11 @@ export class VConsoleNetworkModel extends VConsoleModel {
     if (!BeaconProxy.hasSendBeacon()) {
       return;
     }
-    window.navigator.sendBeacon = BeaconProxy.create((item: VConsoleNetworkRequestItem) => {
-      this.updateRequest(item.id, item);
-    });
+    window.navigator.sendBeacon = BeaconProxy.create(
+      (item: VConsoleNetworkRequestItem) => {
+        this.updateRequest(item.id, item);
+      }
+    );
   }
 
   protected limitListLength() {
@@ -127,7 +135,10 @@ export class VConsoleNetworkModel extends VConsoleModel {
     if (keys.length > this.maxNetworkNumber - N) {
       requestList.update((store) => {
         // delete N more logs for performance
-        const deleteKeys = keys.splice(0, keys.length - this.maxNetworkNumber + N);
+        const deleteKeys = keys.splice(
+          0,
+          keys.length - this.maxNetworkNumber + N
+        );
         for (let i = 0; i < deleteKeys.length; i++) {
           store[deleteKeys[i]] = undefined;
           delete store[deleteKeys[i]];
@@ -136,7 +147,6 @@ export class VConsoleNetworkModel extends VConsoleModel {
       });
     }
   }
-
 } // END class
 
 export default VConsoleNetworkModel;
