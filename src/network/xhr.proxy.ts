@@ -1,41 +1,49 @@
-import { getBytesText, getDate } from '../lib/tool';
-import * as Helper from './helper';
-import { VConsoleNetworkRequestItem } from './requestItem';
-import type { IOnUpdateCallback } from './helper';
+import { getBytesText, getDate } from "../lib/tool";
+import * as Helper from "./helper";
+import { VConsoleNetworkRequestItem } from "./requestItem";
+import type { IOnUpdateCallback } from "./helper";
 
-export class XHRProxyHandler<T extends XMLHttpRequest> implements ProxyHandler<T> {
+export class XHRProxyHandler<T extends XMLHttpRequest>
+  implements ProxyHandler<T>
+{
   public XMLReq: XMLHttpRequest;
   public item: VConsoleNetworkRequestItem;
   protected onUpdateCallback: IOnUpdateCallback;
 
   constructor(XMLReq: XMLHttpRequest, onUpdateCallback: IOnUpdateCallback) {
     this.XMLReq = XMLReq;
-    this.XMLReq.onreadystatechange = () => { this.onReadyStateChange() };
-    this.XMLReq.onabort = () => { this.onAbort() };
-    this.XMLReq.ontimeout = () => { this.onTimeout() };
+    this.XMLReq.onreadystatechange = () => {
+      this.onReadyStateChange();
+    };
+    this.XMLReq.onabort = () => {
+      this.onAbort();
+    };
+    this.XMLReq.ontimeout = () => {
+      this.onTimeout();
+    };
     this.item = new VConsoleNetworkRequestItem();
-    this.item.requestType = 'xhr';
+    this.item.requestType = "xhr";
     this.onUpdateCallback = onUpdateCallback;
   }
 
   public get(target: T, key: string) {
     // if (typeof key === 'string') { console.log('Proxy get:', typeof key, key); }
     switch (key) {
-      case '_noVConsole':
+      case "_noVConsole":
         return this.item.noVConsole;
 
-      case 'open':
+      case "open":
         return this.getOpen(target);
 
-      case 'send':
+      case "send":
         return this.getSend(target);
-      
-      case 'setRequestHeader':
+
+      case "setRequestHeader":
         return this.getSetRequestHeader(target);
 
       default:
         const value = Reflect.get(target, key);
-        if (typeof value === 'function') {
+        if (typeof value === "function") {
           return value.bind(target);
         } else {
           return value;
@@ -46,17 +54,17 @@ export class XHRProxyHandler<T extends XMLHttpRequest> implements ProxyHandler<T
   public set(target: T, key: string, value: any) {
     // if (typeof key === 'string') { console.log('Proxy set:', typeof key, key); }
     switch (key) {
-      case '_noVConsole':
+      case "_noVConsole":
         this.item.noVConsole = !!value;
         return;
 
-      case 'onreadystatechange':
+      case "onreadystatechange":
         return this.setOnReadyStateChange(target, key, value);
 
-      case 'onabort':
+      case "onabort":
         return this.setOnAbort(target, key, value);
 
-      case 'ontimeout':
+      case "ontimeout":
         return this.setOnTimeout(target, key, value);
 
       default:
@@ -76,7 +84,10 @@ export class XHRProxyHandler<T extends XMLHttpRequest> implements ProxyHandler<T
     this.updateItemByReadyState();
 
     // update response by responseType
-    this.item.response = Helper.genResonseByResponseType(this.item.responseType, this.item.response);
+    this.item.response = Helper.genResonseByResponseType(
+      this.item.responseType,
+      this.item.response
+    );
 
     this.triggerUpdate();
   }
@@ -84,13 +95,13 @@ export class XHRProxyHandler<T extends XMLHttpRequest> implements ProxyHandler<T
   public onAbort() {
     // console.log('Proxy onAbort()')
     this.item.cancelState = 1;
-    this.item.statusText = 'Abort';
+    this.item.statusText = "Abort";
     this.triggerUpdate();
   }
 
   public onTimeout() {
     this.item.cancelState = 3;
-    this.item.statusText = 'Timeout';
+    this.item.statusText = "Timeout";
     this.triggerUpdate();
   }
 
@@ -101,14 +112,15 @@ export class XHRProxyHandler<T extends XMLHttpRequest> implements ProxyHandler<T
   }
 
   protected getOpen(target: T) {
-    const targetFunction = Reflect.get(target, 'open');
+    const targetFunction = Reflect.get(target, "open");
     return (...args) => {
       // console.log('Proxy open()');
       const method = args[0];
       const url = args[1];
-      this.item.method = method ? method.toUpperCase() : 'GET';
-      this.item.url = url || '';
-      this.item.name = this.item.url.replace(new RegExp('[/]*$'), '').split('/').pop() || '';
+      this.item.method = method ? method.toUpperCase() : "GET";
+      this.item.url = url || "";
+      this.item.name =
+        this.item.url.replace(new RegExp("[/]*$"), "").split("/").pop() || "";
       this.item.getData = Helper.genGetDataByUrl(this.item.url, {});
       this.triggerUpdate();
       return targetFunction.apply(target, args);
@@ -116,7 +128,7 @@ export class XHRProxyHandler<T extends XMLHttpRequest> implements ProxyHandler<T
   }
 
   protected getSend(target: T) {
-    const targetFunction = Reflect.get(target, 'send');
+    const targetFunction = Reflect.get(target, "send");
     return (...args) => {
       // console.log('Proxy send()');
       const data: XMLHttpRequestBodyInit = args[0];
@@ -127,7 +139,7 @@ export class XHRProxyHandler<T extends XMLHttpRequest> implements ProxyHandler<T
   }
 
   protected getSetRequestHeader(target: T) {
-    const targetFunction = Reflect.get(target, 'setRequestHeader');
+    const targetFunction = Reflect.get(target, "setRequestHeader");
     return (...args) => {
       if (!this.item.requestHeader) {
         this.item.requestHeader = {};
@@ -167,7 +179,7 @@ export class XHRProxyHandler<T extends XMLHttpRequest> implements ProxyHandler<T
       case 0: // UNSENT
       case 1: // OPENED
         this.item.status = 0;
-        this.item.statusText = 'Pending';
+        this.item.statusText = "Pending";
         if (!this.item.startTime) {
           this.item.startTime = Date.now();
           const sd = getDate(this.item.startTime);
@@ -177,24 +189,26 @@ export class XHRProxyHandler<T extends XMLHttpRequest> implements ProxyHandler<T
 
       case 2: // HEADERS_RECEIVED
         this.item.status = this.XMLReq.status;
-        this.item.statusText = 'Loading';
+        this.item.statusText = "Loading";
         this.item.header = {};
-        const header = this.XMLReq.getAllResponseHeaders() || '',
-          headerArr = header.split('\n');
+        const header = this.XMLReq.getAllResponseHeaders() || "",
+          headerArr = header.split("\n");
         // extract plain text to key-value format
         for (let i = 0; i < headerArr.length; i++) {
           const line = headerArr[i];
-          if (!line) { continue; }
-          const arr = line.split(': ');
+          if (!line) {
+            continue;
+          }
+          const arr = line.split(": ");
           const key = arr[0];
-          const value = arr.slice(1).join(': ');
+          const value = arr.slice(1).join(": ");
           this.item.header[key] = value;
         }
         break;
 
       case 3: // LOADING
         this.item.status = this.XMLReq.status;
-        this.item.statusText = 'Loading';
+        this.item.statusText = "Loading";
         if (!!this.XMLReq.response && this.XMLReq.response.length) {
           this.item.responseSize = this.XMLReq.response.length;
           this.item.responseSizeText = getBytesText(this.item.responseSize);
@@ -206,7 +220,8 @@ export class XHRProxyHandler<T extends XMLHttpRequest> implements ProxyHandler<T
         this.item.status = this.XMLReq.status || this.item.status || 0;
         this.item.statusText = String(this.item.status); // show status code when request completed
         this.item.endTime = Date.now();
-        this.item.costTime = this.item.endTime - (this.item.startTime || this.item.endTime);
+        this.item.costTime =
+          this.item.endTime - (this.item.startTime || this.item.endTime);
         this.item.response = this.XMLReq.response;
 
         if (!!this.XMLReq.response && this.XMLReq.response.length) {
@@ -217,7 +232,7 @@ export class XHRProxyHandler<T extends XMLHttpRequest> implements ProxyHandler<T
 
       default:
         this.item.status = this.XMLReq.status;
-        this.item.statusText = 'Unknown';
+        this.item.statusText = "Unknown";
         break;
     }
   }
@@ -230,7 +245,14 @@ export class XHRProxy {
     return new Proxy(XMLHttpRequest, {
       construct(ctor) {
         const XMLReq = new ctor();
-        return new Proxy(XMLReq, new XHRProxyHandler(XMLReq, onUpdateCallback));
+        try {
+          return new Proxy(
+            XMLReq,
+            new XHRProxyHandler(XMLReq, onUpdateCallback)
+          );
+        } catch (error) {
+          //
+        }
       },
     });
   }
