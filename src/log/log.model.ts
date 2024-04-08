@@ -37,6 +37,33 @@ export interface IVConsoleAddLogOptions {
   noOrig?: boolean;
   cmdType?: "input" | "output";
 }
+const IncludeStr = "CONSOLE";
+
+const includeStr = (data: any) => {
+  const _data = data?.origData || data;
+  if (Array.isArray(_data))
+    return _data.some((i) => typeof i === "string" && i.includes(IncludeStr));
+  return typeof _data === "string" && _data.includes(IncludeStr);
+};
+const checkIncludeStr = (item: IVConsoleLogData[] | IVConsoleLogData) => {
+  // check origin data
+  try {
+    if (Array.isArray(item)) {
+      const isSome = item.some((i) => includeStr(i));
+      return isSome;
+    }
+
+    if (Array.isArray(item.origData)) {
+      const isSome = item.origData.some((i) => includeStr(i));
+      return isSome;
+    }
+
+    if (typeof item.origData === "string") return includeStr(item.origData);
+  } catch (error) {
+    // error
+  }
+  return false;
+};
 
 /**********************************
  * Model
@@ -311,6 +338,9 @@ export class VConsoleLogModel extends VConsoleModel {
     },
     opt?: IVConsoleAddLogOptions
   ) {
+    // check origin data
+    // if (!checkIncludeStr(item)) return;
+
     // get group
     const previousGroup =
       this.groupLabelCollapsedStack[this.groupLabelCollapsedStack.length - 2];
@@ -405,6 +435,7 @@ export class VConsoleLogModel extends VConsoleModel {
         let logList = [...store.logList];
 
         for (const log of logs) {
+          if (!checkIncludeStr(log.data)) continue;
           if (this._isRepeatedLog(logList, log)) {
             this._updateLastLogRepeated(logList);
           } else {
